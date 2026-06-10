@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Stephanie's Mäusejagd 🐱</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .score-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        #powerup-indicator {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .powerup-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            animation: pulse 1s infinite;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .powerup-badge.active {
+            opacity: 1;
+        }
+        
+        .mushroom-badge {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.6);
+        }
+        
+        .broccoli-badge {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.6);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            backdrop-filter: blur(10px);
+        }
+        
+        .title {
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 0 0 20px #667eea, 0 0 40px #764ba2;
+            margin-bottom: 10px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #f5576c;
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(245, 87, 108, 0.5);
+        }
+        
+        .powerup-legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .powerup-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            color: white;
+        }
+        
+        .powerup-icon {
+            font-size: 24px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            padding: 20px 50px;
+            font-size: 28px;
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 40px rgba(245, 87, 108, 0.5);
+            transition: all 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .btn:active {
+            transform: scale(0.95) translateY(2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #combo {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 52px;
+            color: #ffd700;
+            text-shadow: 0 0 30px #ff6b6b, 0 0 60px #ffd700;
+            font-weight: 900;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 15;
+            font-style: italic;
+            white-space: nowrap;
+        }
+        
+        .combo-anim {
+            animation: comboPop 0.8s ease-out;
+        }
+        
+        @keyframes comboPop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); }
+            50% { opacity: 1; transform: translate(-50%, -80%) scale(1.3) rotate(5deg); }
+            100% { opacity: 0; transform: translate(-50%, -100%) scale(1) rotate(0deg); }
+        }
+        
+        .heart {
+            color: #ff4757;
+            animation: heartbeat 1s infinite;
+        }
+        
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        .difficulty-indicator {
+            position: absolute;
+            top: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .show-difficulty {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div class="score-box">🧀 <span id="score">0</span></div>
+        <div class="score-box"><span class="heart">❤️</span> <span id="lives">3</span></div>
+    </div>
+    
+    <div id="powerup-indicator">
+        <div id="mushroom-badge" class="powerup-badge mushroom-badge">🍄 GIGANTISCH!</div>
+        <div id="broccoli-badge" class="powerup-badge broccoli-badge">🥦 MAGNET!</div>
+    </div>
+    
+    <div id="combo"></div>
+    <div id="difficulty" class="difficulty-indicator">LEVEL UP! 🔥</div>
+    
+    <div id="startScreen">
+        <h1 class="title">Stephanie's</h1>
+        <h2 class="subtitle">🐭 Mäusejagd 🐱</h2>
+        <div class="powerup-legend">
+            <div class="powerup-item">
+                <span class="powerup-icon">🍄</span>
+                <span>Pilz = Riesige Katze (5s)</span>
+            </div>
+            <div class="powerup-item">
+                <span class="powerup-icon">🥦</span>
+                <span>Brokkoli = Magnet (8s)</span>
+            </div>
+        </div>
+        <button class="btn" id="startBtn">START 🎮</button>
+    </div>
+    
+    <div id="gameOverScreen" class="hidden">
+        <h1 class="title">GAME OVER</h1>
+        <p style="color: #667eea; font-size: 42px; font-weight: bold; margin-bottom: 10px;">
+            🏆 <span id="finalScore">0</span> Punkte
+        </p>
+        <p id="highScore" style="color: #ffd700; font-size: 24px; margin-bottom: 30px;"></p>
+        <button class="btn" id="restartBtn">NOCHMAL 🔄</button>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameRunning = false;
+        let score = 0;
+        let lives = 3;
+        let combo = 0;
+        let lastCatchTime = 0;
+        let mouseSpeed = 2.5;
+        let spawnRate = 1200;
+        let gameTime = 0;
+        let animationId = null;
+        let level = 1;
+        let highScore = localStorage.getItem('stephanieHighScore') || 0;
+        
+        // POWER-UP SYSTEM
+        let powerUps = {
+            mushroom: { active: false, endTime: 0, duration: 5000 },
+            broccoli: { active: false, endTime: 0, duration: 8000 }
+        };
+        
+        const GROUND_HEIGHT = 180;
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            cat.y = canvas.height - GROUND_HEIGHT;
+            cat.x = canvas.width / 2;
+            cat.targetX = canvas.width / 2;
+        }
+        
+        const cat = {
+            x: 0,
+            y: 0,
+            baseWidth: 60,
+            baseHeight: 60,
+            width: 60,
+            height: 60,
+            targetX: 0,
+            tailAngle: 0,
+            blinkTimer: 0,
+            isBlinking: false
+        };
+        
+        let mice = [];
+        let particles = [];
+        let floatingTexts = [];
+        let stars = [];
+        let collectibles = []; // Pilze und Brokkoli
+        
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 50; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 3,
+                    speed: Math.random() * 0.5 + 0.1,
+                    brightness: Math.random()
+                });
+            }
+        }
+        
+        class Mouse {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 80) + 40;
+                this.y = -70;
+                this.size = 55;
+                this.speed = mouseSpeed + Math.random() * 2;
+                this.wobble = Math.random() * Math.PI * 2;
+                this.wobbleSpeed = 0.1;
+                this.rotation = 0;
+                this.earTwitch = 0;
+                this.type = Math.random() > 0.92 ? 'golden' : 'normal';
+            }
+            
+            update() {
+                this.y += this.speed;
+                this.wobble += this.wobbleSpeed;
+                this.x += Math.sin(this.wobble) * 2;
+                this.rotation = Math.sin(this.wobble) * 0.1;
+                this.earTwitch += 0.25;
+                
+                // MAGNET EFFEKT - angezogen zur Katze wenn Brokkoli aktiv
+                if (powerUps.broccoli.active) {
+                    const dx = cat.x - this.x;
+                    const dy = cat.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 250) { // Magnet-Reichweite
+                        this.x += dx * 0.03;
+                        this.y += dy * 0.03;
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(0, 28, 25, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                const isGolden = this.type === 'golden';
+                const bodyColor1 = isGolden ? '#ffd700' : '#a8a8a8';
+                const bodyColor2 = isGolden ? '#ffaa00' : '#6b6b6b';
+                const earColor = isGolden ? '#ffec8b' : '#ff9999';
+                
+                const gradient = ctx.createRadialGradient(-8, -8, 0, 0, 0, 35);
+                gradient.addColorStop(0, bodyColor1);
+                gradient.addColorStop(1, bodyColor2);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.ellipse(0, 8, 28, 25, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = bodyColor1;
+                ctx.beginPath();
+                ctx.arc(0, -12, 22, 0, Math.PI * 2);
+                ctx.fill();
+                
+                const earWiggle = Math.sin(this.earTwitch) * 2;
+                ctx.fillStyle = earColor;
+                ctx.beginPath();
+                ctx.ellipse(-16 + earWiggle, -28, 12, 16, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = bodyColor2;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.ellipse(16 - earWiggle, -28, 12, 16, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.fillStyle = isGolden ? '#fff8dc' : '#ffb3ba';
+                ctx.beginPath();
+                ctx.ellipse(-16 + earWiggle, -28, 6, 10, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(16 - earWiggle, -28, 6, 10, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-8, -16, 8, 0, Math.PI * 2);
+                ctx.arc(8, -16, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = isGolden ? '#ff6b00' : 'black';
+                ctx.beginPath();
+                ctx.arc(-8, -16, 4, 0, Math.PI * 2);
+                ctx.arc(8, -16, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-6, -18, 2, 0, Math.PI * 2);
+                ctx.arc(10, -18, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ff6b9d';
+                ctx.beginPath();
+                ctx.ellipse(0, -6, 4, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#4a4a4a';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-12, -6);
+                ctx.lineTo(-28, -10);
+                ctx.moveTo(-12, -4);
+                ctx.lineTo(-28, -4);
+                ctx.moveTo(-12, -2);
+                ctx.lineTo(-28, 2);
+                ctx.moveTo(12, -6);
+                ctx.lineTo(28, -10);
+                ctx.moveTo(12, -4);
+                ctx.lineTo(28, -4);
+                ctx.moveTo(12, -2);
+                ctx.lineTo(28, 2);
+                ctx.stroke();
+                
+                ctx.strokeStyle = bodyColor2;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 28);
+                ctx.quadraticCurveTo(25, 35, 35 + Math.sin(this.wobble * 2) * 8, 28);
+                ctx.stroke();
+                
+                if (isGolden) {
+                    ctx.fillStyle = '#fff';
+                    ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 100) * 0.2;
+                    ctx.beginPath();
+                    ctx.arc(-20, -20, 3, 0, Math.PI * 2);
+                    ctx.arc(20, 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // POWER-UP KLASSEN
+        class Mushroom {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 100) + 50;
+                this.y = -60;
+                this.size = 45;
+                this.speed = 3;
+                this.wobble = 0;
+            }
+            
+            update() {
+                this.y += this.speed;
+                this.wobble += 0.1;
+                this.x += Math.sin(this.wobble) * 1;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Glow
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 20;
+                
+                // Pilz-Kappe
+                const capGradient = ctx.createRadialGradient(-5, -15, 0, 0, -10, 25);
+                capGradient.addColorStop(0, '#ff6b6b');
+                capGradient.addColorStop(1, '#c0392b');
+                
+                ctx.fillStyle = capGradient;
+                ctx.beginPath();
+                ctx.arc(0, -10, 22, Math.PI, 0);
+                ctx.lineTo(20, -5);
+                ctx.lineTo(-20, -5);
+                ctx.fill();
+                
+                // Weiße Punkte auf Kappe
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.arc(-10, -20, 5, 0, Math.PI * 2);
+                ctx.arc(8, -18, 4, 0, Math.PI * 2);
+                ctx.arc(0, -28, 3, 0, Math.PI * 2);
+                ctx.arc(12, -12, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Stiel
+                ctx.fillStyle = '#f5f5f5';
+                ctx.fillRect(-8, -5, 16, 25);
+                
+                // Stiel-Details
+                ctx.fillStyle = '#e0e0e0';
+                ctx.fillRect(-6, 0, 12, 3);
+                ctx.fillRect(-6, 8, 12, 3);
+                
+                ctx.restore();
+            }
+        }
+        
+        class Broccoli {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 100) + 50;
+                this.y = -60;
+                this.size = 45;
+                this.speed = 3;
+                this.wobble = 0;
+            }
+            
+            update() {
+                this.y += this.speed;
+                this.wobble += 0.08;
+                this.x += Math.sin(this.wobble) * 0.5;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Glow
+                ctx.shadowColor = '#4ecdc4';
+                ctx.shadowBlur = 20;
+                
+                // Stiel
+                ctx.fillStyle = '#8bc34a';
+                ctx.fillRect(-6, 5, 12, 20);
+                
+                // Krone (mehrere Kreise)
+                ctx.fillStyle = '#4caf50';
+                ctx.shadowBlur = 10;
+                
+                ctx.beginPath();
+                ctx.arc(-12, -5, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(12, -5, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(0, -15, 14, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(-8, -12, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(8, -12, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Highlights
+                ctx.fillStyle = '#81c784';
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.arc(-8, -8, 4, 0, Math.PI * 2);
+                ctx.arc(5, -12, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        class Particle {
+            constructor(x, y, color, type = 'sparkle') {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.life = 1;
+                this.color = color;
+                this.size = Math.random() * 8 + 4;
+                this.type = type;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.2;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.3;
+                this.life -= 0.03;
+                this.rotation += this.rotSpeed;
+                this.size *= 0.96;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                if (this.type === 'star') {
+                    ctx.fillStyle = this.color;
+                    drawStar(0, 0, 5, this.size, this.size/2);
+                } else if (this.type === 'heart') {
+                    ctx.fillStyle = this.color;
+                    drawHeart(0, 0, this.size);
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        function drawHeart(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + size / 4);
+            ctx.quadraticCurveTo(x, y, x + size / 4, y);
+            ctx.quadraticCurveTo(x + size / 2, y, x + size / 2, y + size / 4);
+            ctx.quadraticCurveTo(x + size / 2, y, x + size * 3/4, y);
+            ctx.quadraticCurveTo(x + size, y, x + size, y + size / 4);
+            ctx.quadraticCurveTo(x + size, y + size / 2, x + size / 2, y + size * 3/4);
+            ctx.quadraticCurveTo(x, y + size / 2, x, y + size / 4);
+            ctx.fill();
+        }
+        
+        class FloatingText {
+            constructor(x, y, text, isCombo = false, isGolden = false, isPowerUp = false) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.life = 1;
+                this.vy = -3;
+                this.isCombo = isCombo;
+                this.isGolden = isGolden;
+                this.isPowerUp = isPowerUp;
+                this.scale = 1;
+            }
+            
+            update() {
+                this.y += this.vy;
+                this.life -= 0.025;
+                if (this.isCombo || this.isPowerUp) {
+                    this.scale = 1 + (1 - this.life) * 0.3;
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.scale, this.scale);
+                
+                if (this.isPowerUp) {
+                    ctx.font = 'bold 48px Arial';
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = this.text.includes('🍄') ? '#ff6b6b' : '#4ecdc4';
+                    ctx.lineWidth = 4;
+                    ctx.textAlign = 'center';
+                    ctx.strokeText(this.text, 0, 0);
+                    ctx.fillText(this.text, 0, 0);
+                    ctx.shadowColor = this.text.includes('🍄') ? '#ff6b6b' : '#4ecdc4';
+                    ctx.shadowBlur = 20;
+                    ctx.fillText(this.text, 0, 0);
+                } else if (this.isGolden) {
+                    ctx.font = 'bold 40px Arial';
+                    ctx.fillStyle = '#ffd700';
+                    ctx.strokeStyle = '#ff8c00';
+                    ctx.lineWidth = 3;
+                    ctx.textAlign = 'center';
+                    ctx.strokeText(this.text, 0, 0);
+                    ctx.fillText(this.text, 0, 0);
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 15;
+                    ctx.fillText(this.text, 0, 0);
+                } else if (this.isCombo) {
+                    ctx.font = 'bold 44px Arial';
+                    ctx.fillStyle = '#ffd700';
+                    ctx.strokeStyle = '#ff6b6b';
+                    ctx.lineWidth = 3;
+                    ctx.textAlign = 'center';
+                    ctx.strokeText(this.text, 0, 0);
+                    ctx.fillText(this.text, 0, 0);
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 15;
+                    ctx.fillText(this.text, 0, 0);
+                } else {
+                    ctx.font = 'bold 28px Arial';
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#667eea';
+                    ctx.lineWidth = 2;
+                    ctx.textAlign = 'center';
+                    ctx.strokeText(this.text, 0, 0);
+                    ctx.fillText(this.text, 0, 0);
+                }
+                
+                ctx.restore();
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        let isDragging = false;
+        
+        canvas.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            cat.targetX = e.touches[0].clientX;
+        }, {passive: false});
+        
+        canvas.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                cat.targetX = e.touches[0].clientX;
+            }
+        }, {passive: false});
+        
+        canvas.addEventListener('touchend', () => isDragging = false);
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            cat.targetX = e.clientX;
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) cat.targetX = e.clientX;
+        });
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        
+        let lastSpawn = 0;
+        let lastPowerUpSpawn = 0;
+        
+        function spawnObjects(timestamp) {
+            // Mäuse spawnen
+            if (timestamp - lastSpawn > spawnRate) {
+                mice.push(new Mouse());
+                lastSpawn = timestamp;
+                
+                if (spawnRate > 500) spawnRate -= 10;
+                if (mouseSpeed < 8) mouseSpeed += 0.03;
+                
+                if (score > 0 && score % 15 === 0) {
+                    showLevelUp();
+                }
+            }
+            
+            // Power-ups spawnen (alle 8-12 Sekunden)
+            if (timestamp - lastPowerUpSpawn > 8000 + Math.random() * 4000) {
+                const isMushroom = Math.random() > 0.5;
+                if (isMushroom) {
+                    collectibles.push(new Mushroom());
+                } else {
+                    collectibles.push(new Broccoli());
+                }
+                lastPowerUpSpawn = timestamp;
+            }
+        }
+        
+        function showLevelUp() {
+            const diff = document.getElementById('difficulty');
+            level = Math.floor(score / 15) + 1;
+            diff.textContent = `LEVEL ${level}! 🔥`;
+            diff.classList.add('show-difficulty');
+            setTimeout(() => diff.classList.remove('show-difficulty'), 1500);
+        }
+        
+        function updatePowerUps() {
+            const now = Date.now();
+            
+            // Pilz-Status prüfen
+            if (powerUps.mushroom.active && now > powerUps.mushroom.endTime) {
+                powerUps.mushroom.active = false;
+                cat.width = cat.baseWidth;
+                cat.height = cat.baseHeight;
+                document.getElementById('mushroom-badge').classList.remove('active');
+            }
+            
+            // Brokkoli-Status prüfen
+            if (powerUps.broccoli.active && now > powerUps.broccoli.endTime) {
+                powerUps.broccoli.active = false;
+                document.getElementById('broccoli-badge').classList.remove('active');
+            }
+        }
+        
+        function activateMushroom() {
+            powerUps.mushroom.active = true;
+            powerUps.mushroom.endTime = Date.now() + powerUps.mushroom.duration;
+            cat.width = cat.baseWidth * 2.2; // RIESIG!
+            cat.height = cat.baseHeight * 2.2;
+            document.getElementById('mushroom-badge').classList.add('active');
+            
+            // Epic Effekt
+            for (let i = 0; i < 30; i++) {
+                particles.push(new Particle(cat.x, cat.y, '#ff6b6b', 'star'));
+            }
+            floatingTexts.push(new FloatingText(cat.x, cat.y - 50, '🍄 GIGANTISCH!', false, false, true));
+        }
+        
+        function activateBroccoli() {
+            powerUps.broccoli.active = true;
+            powerUps.broccoli.endTime = Date.now() + powerUps.broccoli.duration;
+            document.getElementById('broccoli-badge').classList.add('active');
+            
+            // Epic Effekt
+            for (let i = 0; i < 30; i++) {
+                particles.push(new Particle(cat.x, cat.y, '#4ecdc4', 'star'));
+            }
+            floatingTexts.push(new FloatingText(cat.x, cat.y - 50, '🥦 MAGNET!', false, false, true));
+        }
+        
+        function checkCollisions() {
+            // Mäuse checken
+            for (let i = mice.length - 1; i >= 0; i--) {
+                const m = mice[i];
+                const dx = m.x - cat.x;
+                const dy = m.y - (cat.y - 15);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Größere Hitbox wenn Pilz aktiv
+                const hitboxMultiplier = powerUps.mushroom.active ? 1.5 : 1;
+                
+                if (dist < (cat.width/2 * hitboxMultiplier + m.size/2)) {
+                    mice.splice(i, 1);
+                    
+                    const isGolden = m.type === 'golden';
+                    const points = isGolden ? 5 : 1;
+                    score += points;
+                    combo++;
+                    
+                    const now = Date.now();
+                    let comboPoints = 0;
+                    if (now - lastCatchTime < 1200 && combo > 2) {
+                        comboPoints = combo;
+                        showCombo(combo);
+                    } else if (now - lastCatchTime > 1200) {
+                        combo = 1;
+                    }
+                    lastCatchTime = now;
+                    score += comboPoints;
+                    
+                    const colors = isGolden ? 
+                        ['#ffd700', '#ffaa00', '#ffff00', '#ff8c00'] : 
+                        ['#ffd700', '#ff6b6b', '#4ecdc4', '#ffe66d', '#a8e6cf'];
+                    
+                    for (let j = 0; j < (isGolden ? 20 : 10); j++) {
+                        const type = Math.random() > 0.3 ? 'star' : 'heart';
+                        particles.push(new Particle(m.x, m.y, colors[Math.floor(Math.random() * colors.length)], type));
+                    }
+                    
+                    const displayPoints = points + comboPoints;
+                    floatingTexts.push(new FloatingText(m.x, m.y, '+' + displayPoints, comboPoints > 0, isGolden));
+                    
+                    updateUI();
+                } else if (m.y > canvas.height + 50) {
+                    mice.splice(i, 1);
+                    lives--;
+                    combo = 0;
+                    updateUI();
+                    
+                    canvas.style.transform = `translate(${Math.random()*15-7}px, ${Math.random()*15-7}px)`;
+                    setTimeout(() => canvas.style.transform = 'none', 150);
+                    
+                    if (lives <= 0) gameOver();
+                }
+            }
+            
+            // Power-ups checken
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                const c = collectibles[i];
+                const dx = c.x - cat.x;
+                const dy = c.y - cat.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < (cat.width/2 + c.size/2 + 10)) {
+                    collectibles.splice(i, 1);
+                    
+                    if (c instanceof Mushroom) {
+                        activateMushroom();
+                    } else if (c instanceof Broccoli) {
+                        activateBroccoli();
+                    }
+                } else if (c.y > canvas.height + 50) {
+                    collectibles.splice(i, 1);
+                }
+            }
+        }
+        
+        function showCombo(n) {
+            const comboEl = document.getElementById('combo');
+            const texts = ['', 'DOUBLE!', 'TRIPLE!', 'SUPER!', 'MEGA!', 'ULTRA!', 'INSANE!', 'GODLIKE!', 'LEGENDARY!'];
+            comboEl.textContent = n < texts.length ? texts[n] : n + 'x COMBO!';
+            comboEl.classList.remove('combo-anim');
+            void comboEl.offsetWidth;
+            comboEl.classList.add('combo-anim');
+        }
+        
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+        }
+        
+        function drawCat() {
+            cat.x += (cat.targetX - cat.x) * (powerUps.mushroom.active ? 0.08 : 0.15);
+            cat.x = Math.max(cat.width/2, Math.min(canvas.width - cat.width/2, cat.x));
+            
+            cat.tailAngle += powerUps.mushroom.active ? 0.25 : 0.15;
+            cat.blinkTimer++;
+            if (cat.blinkTimer > 120) {
+                cat.isBlinking = true;
+                if (cat.blinkTimer > 130) {
+                    cat.isBlinking = false;
+                    cat.blinkTimer = 0;
+                }
+            }
+            
+            const bounce = Math.sin(Date.now() / (powerUps.mushroom.active ? 400 : 250)) * (powerUps.mushroom.active ? 8 : 5);
+            
+            ctx.save();
+            ctx.translate(cat.x, cat.y + bounce);
+            
+            // Power-up Glow
+            if (powerUps.mushroom.active) {
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 30;
+            } else if (powerUps.broccoli.active) {
+                ctx.shadowColor = '#4ecdc4';
+                ctx.shadowBlur = 20;
+            }
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(0, 35 * (cat.height/cat.baseHeight), 35 * (cat.width/cat.baseWidth), 10 * (cat.height/cat.baseHeight), 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Tail
+            ctx.strokeStyle = powerUps.mushroom.active ? '#ff8c69' : '#ff8c69';
+            ctx.lineWidth = 8 * (cat.width/cat.baseWidth);
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-20 * (cat.width/cat.baseWidth), 20 * (cat.height/cat.baseHeight));
+            const tailWave = Math.sin(cat.tailAngle) * 15 * (cat.width/cat.baseWidth);
+            ctx.quadraticCurveTo(-40 * (cat.width/cat.baseWidth), 5 * (cat.height/cat.baseHeight) + tailWave, -50 * (cat.width/cat.baseWidth), -15 * (cat.height/cat.baseHeight) + tailWave/2);
+            ctx.stroke();
+            
+            // Body
+            const bodyGrad = ctx.createRadialGradient(-10 * (cat.width/cat.baseWidth), -8 * (cat.height/cat.baseHeight), 0, 0, 0, 45 * (cat.width/cat.baseWidth));
+            
+            if (powerUps.mushroom.active) {
+                bodyGrad.addColorStop(0, '#ff9999');
+                bodyGrad.addColorStop(0.5, '#ff6b6b');
+                bodyGrad.addColorStop(1, '#ee5a6f');
+            } else if (powerUps.broccoli.active) {
+                bodyGrad.addColorStop(0, '#81c784');
+                bodyGrad.addColorStop(0.5, '#4caf50');
+                bodyGrad.addColorStop(1, '#2e7d32');
+            } else {
+                bodyGrad.addColorStop(0, '#ffb347');
+                bodyGrad.addColorStop(0.5, '#ff8c69');
+                bodyGrad.addColorStop(1, '#ff6b6b');
+            }
+            
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 15 * (cat.height/cat.baseHeight), 32 * (cat.width/cat.baseWidth), 28 * (cat.height/cat.baseHeight), 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Stripes
+            ctx.fillStyle = powerUps.mushroom.active ? '#c0392b' : (powerUps.broccoli.active ? '#1b5e20' : '#e5564a');
+            const s = cat.width/cat.baseWidth;
+            ctx.beginPath();
+            ctx.moveTo(-15 * s, -5 * s);
+            ctx.lineTo(-8 * s, 3 * s);
+            ctx.lineTo(-18 * s, 8 * s);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(0, -8 * s);
+            ctx.lineTo(8 * s, 3 * s);
+            ctx.lineTo(-3 * s, 8 * s);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(15 * s, -5 * s);
+            ctx.lineTo(22 * s, 5 * s);
+            ctx.lineTo(12 * s, 10 * s);
+            ctx.fill();
+            
+            // Head
+            ctx.fillStyle = powerUps.mushroom.active ? '#ff6b6b' : (powerUps.broccoli.active ? '#4caf50' : '#ff8c69');
+            ctx.beginPath();
+            ctx.arc(0, -18 * s, 28 * s, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ears
+            ctx.fillStyle = powerUps.mushroom.active ? '#ff6b6b' : (powerUps.broccoli.active ? '#4caf50' : '#ff8c69');
+            ctx.beginPath();
+            ctx.moveTo(-25 * s, -32 * s);
+            ctx.lineTo(-35 * s, -55 * s);
+            ctx.lineTo(-12 * s, -40 * s);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(25 * s, -32 * s);
+            ctx.lineTo(35 * s, -55 * s);
+            ctx.lineTo(12 * s, -40 * s);
+            ctx.fill();
+            
+            ctx.fillStyle = powerUps.mushroom.active ? '#ffcdd2' : (powerUps.broccoli.active ? '#c8e6c9' : '#ffcdd2');
+            ctx.beginPath();
+            ctx.moveTo(-25 * s, -35 * s);
+            ctx.lineTo(-30 * s, -48 * s);
+            ctx.lineTo(-18 * s, -42 * s);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(25 * s, -35 * s);
+            ctx.lineTo(30 * s, -48 * s);
+            ctx.lineTo(18 * s, -42 * s);
+            ctx.fill();
+            
+            // Eyes
+            if (!cat.isBlinking) {
+                let nearestX = cat.x;
+                if (mice.length > 0) {
+                    let nearest = mice[0];
+                    let minDist = Infinity;
+                    for (let m of mice) {
+                        const d = Math.abs(m.x - cat.x);
+                        if (d < minDist) {
+                            minDist = d;
+                            nearest = m;
+                        }
+                    }
+                    nearestX = nearest.x;
+                }
+                
+                const lookX = (nearestX - cat.x) * 0.04;
+                
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.ellipse((-12 + lookX) * s, -22 * s, 10 * s, 13 * s, 0, 0, Math.PI * 2);
+                ctx.ellipse((12 + lookX) * s, -22 * s, 10 * s, 13 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = powerUps.mushroom.active ? '#c0392b' : (powerUps.broccoli.active ? '#1b5e20' : '#2d3436');
+                ctx.beginPath();
+                ctx.arc((-12 + lookX * 1.3) * s, -20 * s, 5 * s, 0, Math.PI * 2);
+                ctx.arc((12 + lookX * 1.3) * s, -20 * s, 5 * s, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc((-10 + lookX * 1.3) * s, -24 * s, 2 * s, 0, Math.PI * 2);
+                ctx.arc((14 + lookX * 1.3) * s, -24 * s, 2 * s, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.strokeStyle = powerUps.mushroom.active ? '#c0392b' : (powerUps.broccoli.active ? '#1b5e20' : '#2d3436');
+                ctx.lineWidth = 2 * s;
+                ctx.beginPath();
+                ctx.moveTo(-22 * s, -22 * s);
+                ctx.quadraticCurveTo(-12 * s, -18 * s, -4 * s, -22 * s);
+                ctx.moveTo(4 * s, -22 * s);
+                ctx.quadraticCurveTo(12 * s, -18 * s, 22 * s, -22 * s);
+                ctx.stroke();
+            }
+            
+            // Nose
+            ctx.fillStyle = '#ff6b9d';
+            ctx.beginPath();
+            ctx.moveTo(-6 * s, -10 * s);
+            ctx.lineTo(6 * s, -10 * s);
+            ctx.lineTo(0, -4 * s);
+            ctx.fill();
+            
+            // Mouth
+            ctx.strokeStyle = powerUps.mushroom.active ? '#c0392b' : (powerUps.broccoli.active ? '#1b5e20' : '#2d3436');
+            ctx.lineWidth = 1.5 * s;
+            ctx.beginPath();
+            ctx.moveTo(0, -4 * s);
+            ctx.lineTo(0, 3 * s);
+            ctx.moveTo(0, 3 * s);
+            ctx.quadraticCurveTo(-7 * s, 8 * s, -12 * s, 3 * s);
+            ctx.moveTo(0, 3 * s);
+            ctx.quadraticCurveTo(7 * s, 8 * s, 12 * s, 3 * s);
+            ctx.stroke();
+            
+            // Whiskers
+            ctx.strokeStyle = '#dfe6e9';
+            ctx.lineWidth = 1.5 * s;
+            ctx.beginPath();
+            ctx.moveTo(-18 * s, -4 * s);
+            ctx.lineTo(-42 * s, -8 * s);
+            ctx.moveTo(-18 * s, 0);
+            ctx.lineTo(-42 * s, 2 * s);
+            ctx.moveTo(-18 * s, 4 * s);
+            ctx.lineTo(-42 * s, 10 * s);
+            ctx.moveTo(18 * s, -4 * s);
+            ctx.lineTo(42 * s, -8 * s);
+            ctx.moveTo(18 * s, 0);
+            ctx.lineTo(42 * s, 2 * s);
+            ctx.moveTo(18 * s, 4 * s);
+            ctx.lineTo(42 * s, 10 * s);
+            ctx.stroke();
+            
+            // Paws
+            ctx.fillStyle = powerUps.mushroom.active ? '#ff6b6b' : (powerUps.broccoli.active ? '#4caf50' : '#ff8c69');
+            ctx.beginPath();
+            ctx.ellipse(-18 * s, 38 * s, 9 * s, 7 * s, 0, 0, Math.PI * 2);
+            ctx.ellipse(18 * s, 38 * s, 9 * s, 7 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawBackground() {
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#1a1a2e');
+            grad.addColorStop(0.5, '#16213e');
+            grad.addColorStop(1, '#0f3460');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'white';
+            for (let star of stars) {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+                ctx.globalAlpha = star.brightness * (0.5 + Math.sin(gameTime * 0.001 + star.x) * 0.5);
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 20);
+            ctx.lineTo(canvas.width, canvas.height - 20);
+            ctx.stroke();
+        }
+        
+        function gameLoop(timestamp) {
+            if (!gameRunning) return;
+            gameTime = timestamp;
+            
+            updatePowerUps();
+            
+            drawBackground();
+            spawnObjects(timestamp);
+            
+            // Power-ups zeichnen
+            for (let c of collectibles) {
+                c.update();
+                c.draw();
+            }
+            
+            for (let m of mice) {
+                m.update();
+                m.draw();
+            }
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+            
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                floatingTexts[i].update();
+                floatingTexts[i].draw();
+                if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+            }
+            
+            checkCollisions();
+            drawCat();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            score = 0;
+            lives = 3;
+            combo = 0;
+            level = 1;
+            mouseSpeed = 2.5;
+            spawnRate = 1200;
+            mice = [];
+            collectibles = [];
+            particles = [];
+            floatingTexts = [];
+            lastSpawn = 0;
+            lastPowerUpSpawn = 0;
+            
+            // Reset power-ups
+            powerUps.mushroom.active = false;
+            powerUps.broccoli.active = false;
+            cat.width = cat.baseWidth;
+            cat.height = cat.baseHeight;
+            document.getElementById('mushroom-badge').classList.remove('active');
+            document.getElementById('broccoli-badge').classList.remove('active');
+            
+            updateUI();
+            gameRunning = true;
+            resize();
+            gameLoop(0);
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            if (animationId) cancelAnimationFrame(animationId);
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('stephanieHighScore', highScore);
+            }
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('highScore').textContent = `🏆 Rekord: ${highScore}`;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            startGame();
+        }
+        
+        // Initialize
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+        
+        // Initial setup
+        resize();
+        initStars();
+        drawBackground();
+    </script>
+</body>
+</html>
