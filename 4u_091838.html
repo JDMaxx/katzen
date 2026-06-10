@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="de">
-	 token: ***
-    timeout: 600000
-    error_count: 10
-    reporting_interval: 5000
-    artifact_name: github-pages
-    preview: false
-    {
-	"artifact_id": 7541436205,
-	"pages_build_version": "1bfde59442a27fff54b0430116f0e405e1dfcc99",
-	"oidc_token": "***"
-}
+jobs:
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
